@@ -1,0 +1,21 @@
+# Render setup for Study Notebook (Render: New > Blueprint > pick this repository).
+# Secrets are NOT stored here: Render asks for DATABASE_URL and APP_PASSWORD when you create it,
+# and makes SESSION_SECRET up by itself.
+services:
+  - type: web
+    name: study-notebook
+    runtime: node
+    plan: free
+    region: ohio            # same area as the Neon database (US East), so pages load faster
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        sync: false         # paste the Neon connection string on Render's screen
+      - key: APP_PASSWORD
+        sync: false         # the access code you and your tutors will type
+      - key: SESSION_SECRET
+        generateValue: true

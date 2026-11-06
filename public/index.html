@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Study Notebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one notepad per tutor. Tutor tabs on top, then a notes list beside the open note
+   (title, text, links, files). One deliberate dark navy look. */
+:root {
+  color-scheme: dark;
+  --bg: #0F172A;
+  --panel: #1E293B;
+  --panel-2: #172033;
+  --border: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.28);
+  --text: #F1F5F9;
+  --text-2: #CBD5E1;
+  --muted: #94A3B8;
+  --faint: #64748B;
+  --accent: #10B981;
+  --accent-hover: #34D399;
+  --accent-ink: #04221A;
+  --accent-soft: rgba(16, 185, 129, 0.12);
+  --sky: #7DD3FC;
+  --sky-soft: rgba(56, 189, 248, 0.12);
+  --violet: #C4B5FD;
+  --violet-soft: rgba(196, 181, 253, 0.12);
+  --amber: #FBBF24;
+  --amber-soft: rgba(245, 158, 11, 0.12);
+  --red: #FCA5A5;
+  --red-soft: rgba(248, 113, 113, 0.12);
+  --hover: rgba(148, 163, 184, 0.06);
+  --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--text); font: 14px/1.55 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding-block: 24px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+header h1 { font-size: 22px; font-weight: 700; }
+.notice { background: var(--amber-soft); border: 1px solid rgba(245, 158, 11, .35); padding: 12px 16px; border-radius: var(--radius-sm); }
+
+/* Tutor tabs */
+.tutors { display: flex; gap: 10px; flex-wrap: wrap; }
+.tutor { display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 8px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--panel); color: var(--text-2); font: inherit; font-weight: 600; cursor: pointer; transition: all .15s ease; }
+.tutor:hover { border-color: var(--muted); color: var(--text); }
+.tutor[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tutor .n { font-size: 12px; font-weight: 600; opacity: .7; font-variant-numeric: tabular-nums; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 11px; flex: none; }
+.av-0 { background: var(--sky-soft); color: var(--sky); }
+.av-1 { background: var(--violet-soft); color: var(--violet); }
+.av-2 { background: var(--amber-soft); color: var(--amber); }
+.av-3 { background: var(--red-soft); color: var(--red); }
+.av-4 { background: var(--accent-soft); color: #6EE7B7; }
+.tutor[aria-pressed="true"] .avatar { background: rgba(4, 34, 26, .18); color: var(--accent-ink); }
+
+/* Notepad */
+.topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; min-width: 0; }
+
+/* Notes list: date | title | open */
+.list-head, .note-list button[data-id] { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.list-head { padding: 0 14px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); border-bottom: 1px solid var(--border); }
+.note-list { list-style: none; margin: 0; padding: 0; }
+.note-list li + li { border-top: 1px solid var(--border); }
+.note-list li:not(.empty) { display: flex; align-items: center; gap: 6px; }
+.note-list li > button[data-id] { flex: 1; min-width: 0; }
+.order { display: flex; gap: 4px; padding-right: 8px; }
+.order button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-strong); background: transparent; color: var(--text-2); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; display: grid; place-items: center; transition: all .15s ease; }
+.order button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.order button:disabled { opacity: .3; cursor: default; }
+.note-list li.empty { margin-top: 14px; }
+.note-list button[data-id] { width: 100%; text-align: left; font: inherit; color: var(--text-2); background: transparent; border: 0; border-radius: var(--radius-sm); padding: 14px; cursor: pointer; transition: background .15s ease; }
+.note-list button[data-id]:hover { background: var(--hover); }
+.note-list .d { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note-link { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.note-link input { flex: 1 1 260px; font-size: 13px; color: var(--sky); }
+.note-list .t { display: block; font-size: 16px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-list .m { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.note-list .open { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+/* The big box a note opens in */
+.note-dlg { width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--panel); color: var(--text); box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }
+.note-dlg::backdrop { background: rgba(2, 6, 23, .7); backdrop-filter: blur(3px); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.empty { color: var(--muted); text-align: center; padding: 22px 12px; font-size: 13px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); list-style: none; }
+
+.editor { display: flex; flex-direction: column; gap: 18px; padding: 22px; }
+.editor-top { display: flex; align-items: center; gap: 10px; }
+.title-input { flex: 1; font-size: 20px; font-weight: 700; }
+.field-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.hint { font-size: 13px; color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+.body-input { min-height: 280px; font-size: 15px; line-height: 1.7; background: var(--panel-2); }
+.save-state { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.save-state.ok { color: var(--accent); }
+.section h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-2); margin-bottom: 10px; }
+.items { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.items li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-sm); min-width: 0; }
+.items .body { flex: 1; min-width: 0; }
+.items .name { font-weight: 600; overflow-wrap: anywhere; }
+.items .sub { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.items .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ftype { width: 40px; height: 40px; flex: none; border-radius: 10px; display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: rgba(148, 163, 184, .1); color: var(--text-2); }
+.ftype.pdf, .ftype.yt { background: var(--red-soft); color: var(--red); }
+.ftype.ppt { background: rgba(253, 186, 116, .12); color: #FDBA74; }
+.ftype.doc { background: rgba(147, 197, 253, .12); color: #93C5FD; }
+.ftype.xls { background: var(--accent-soft); color: #6EE7B7; }
+.ftype.img { background: var(--violet-soft); color: var(--violet); }
+.ftype.link { background: var(--sky-soft); color: var(--sky); }
+.add-link { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-link input { flex: 1 1 200px; }
+.editor-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--border); }
+
+/* Controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 999px; padding: 9px 16px; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; white-space: nowrap; text-decoration: none; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.ghost { background: transparent; border-color: var(--border-strong); color: var(--text-2); }
+.btn.ghost:hover { border-color: var(--muted); color: var(--text); }
+.btn.sm { padding: 6px 12px; font-size: 12px; }
+.btn.danger:hover, .btn.arm { color: var(--red); border-color: rgba(248, 113, 113, .45); background: var(--red-soft); }
+.btn:disabled { opacity: .5; cursor: default; }
+input, textarea { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 12px; outline: none; min-width: 0; width: 100%; transition: border-color .15s ease, box-shadow .15s ease; }
+textarea { resize: vertical; }
+input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+.rename { display: flex; gap: 8px; max-width: 520px; }
+
+.toast { position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translate(-50%, 20px); background: var(--panel); border: 1px solid var(--border-strong); color: var(--text); padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all .2s ease; z-index: 50; max-width: calc(100vw - 32px); text-align: center; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 800px) {
+  .wrap { padding-block: 16px 32px; gap: 16px; }
+  .list-head { display: none; }
+  .note-list button[data-id] { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .note-list .d { grid-column: 1 / -1; grid-row: 1; font-size: 12px; }
+  .note-dlg { width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  .editor { padding: 16px; }
+  .title-input { font-size: 19px; }
+  .items li { flex-wrap: wrap; }
+  .items .acts { width: 100%; justify-content: flex-start; }
+}
+body { margin: 0; min-height: 100vh; }
+header .spacer { flex: 1; }
+.login { max-width: 380px; margin: 12vh auto 0; display: flex; flex-direction: column; gap: 14px; }
+.login h2 { font-size: 18px; }
+.login .err { color: var(--red); font-size: 13px; min-height: 1.4em; margin: 0; }
+</style>
+</head>
+<body>
+<main class="wrap" id="loginView" hidden>
+  <header><h1>Study Notebook</h1><span class="muted">One notepad for each tutor</span></header>
+  <form class="panel login" id="loginForm">
+    <h2>Sign in</h2>
+    <label class="field-label" for="loginCode">Access code</label>
+    <input id="loginCode" type="password" autocomplete="current-password" required>
+    <p class="err" id="loginErr" role="alert"></p>
+    <button class="btn primary" type="submit">Open notebook</button>
+  </form>
+</main>
+
+<main class="wrap" id="appView" hidden>
+  <header>
+    <h1>Study Notebook</h1>
+    <span class="muted">One notepad for each tutor</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="logoutBtn" type="button">Sign out</button>
+  </header>
+  <div class="notice" id="connNotice" hidden></div>
+
+  <div class="topbar">
+    <nav class="tutors" id="tutorTabs" aria-label="Tutors"></nav>
+    <div class="top-actions">
+      <button class="btn primary" id="newNoteBtn">New note</button>
+      <button class="btn ghost" id="renameBtn">Rename tutor</button>
+      <button class="btn ghost" id="addTutorBtn">Add tutor</button>
+    </div>
+  </div>
+  <form class="rename" id="renameForm" hidden>
+    <input id="renameInput" maxlength="40" aria-label="Tutor name" autocomplete="off">
+    <button class="btn primary sm" type="submit" id="renameSubmit">Save name</button>
+    <button class="btn ghost sm" type="button" id="renameCancel">Cancel</button>
+  </form>
+
+  <section class="panel">
+    <div class="list-head" style="padding-right:96px"><span>Date</span><span>Title</span><span></span></div>
+    <ul class="note-list" id="noteList"></ul>
+  </section>
+</main>
+
+<dialog class="note-dlg" id="noteDlg" aria-label="Note">
+    <div class="editor" id="editor">
+      <div class="dlg-head">
+        <span class="muted" id="noteDate"></span>
+        <button class="btn ghost sm" id="closeBtn" type="button">Close</button>
+      </div>
+      <div class="note-link" id="noteLinkRow">
+        <input id="noteLink" readonly aria-label="Link to this note">
+        <button class="btn ghost sm" id="copyLinkBtn" type="button">Copy link</button>
+      </div>
+      <p class="hint" id="newHint" hidden>Type a title and your notes below. Changes save on their own, or click <strong>Save</strong>.</p>
+      <div>
+        <label class="field-label" for="noteTitle">Title</label>
+        <div class="editor-top">
+          <input class="title-input" id="noteTitle" placeholder="Type a title, e.g. Lesson 1: Fractions" maxlength="200">
+          <span class="save-state" id="saveState"></span>
+          <button class="btn primary" id="saveBtn" type="button">Save</button>
+        </div>
+      </div>
+      <div>
+        <label class="field-label" for="noteText">Notes</label>
+        <textarea class="body-input" id="noteText" placeholder="Write your notes here…"></textarea>
+      </div>
+
+      <div class="section">
+        <h3>Links</h3>
+        <ul class="items" id="linkList"></ul>
+        <form class="add-link" id="linkForm">
+          <input id="linkUrl" type="url" placeholder="Paste a link (website, YouTube…)" aria-label="Link address" required>
+          <input id="linkLabel" placeholder="Name (optional)" aria-label="Link name" maxlength="120">
+          <button class="btn ghost" type="submit">Add link</button>
+        </form>
+      </div>
+
+      <div class="section">
+        <h3>Files</h3>
+        <ul class="items" id="fileList"></ul>
+        <label class="btn ghost" for="fileInput">Add file (PDF, Word, PowerPoint, Excel, image)</label>
+        <input type="file" id="fileInput" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.gif,.webp">
+      </div>
+
+      <div class="editor-foot">
+        <span class="muted" id="noteMeta" style="font-size:12px"></span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="moveTopBtn">Move to top</button>
+          <button class="btn ghost sm danger" id="deleteNoteBtn">Delete note</button>
+        </span>
+      </div>
+    </div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* Study Notebook — talks to this site's own server, which keeps everything in Neon (PostgreSQL). */
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s = '') => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const safeUrl = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch { return ''; } };
+const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+
+const S = { tutors: [], notes: [] };
+let tutor = (() => { try { return localStorage.getItem('sn-tutor') || 't1'; } catch { return 't1'; } })();
+let openId = null, dirty = false, saveTimer = null, writing = Promise.resolve(), notesLoaded = false;
+
+/* ---------- Server calls ---------- */
+
+let inFlight = 0, writeSeq = 0;
+async function api(method, url, body, file) {
+  const opt = { method, headers: {}, credentials: 'same-origin' };
+  if (file) { opt.body = file; opt.headers['Content-Type'] = 'application/octet-stream'; }
+  else if (body !== undefined) { opt.body = JSON.stringify(body); opt.headers['Content-Type'] = 'application/json'; }
+  const r = await fetch(url, opt);
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && url !== '/api/login') { showLogin(); throw Object.assign(new Error('Please sign in again.'), { status: 401 }); }
+  if (!r.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: r.status });
+  return data;
+}
+/* Every change goes through here: send it, then reload the notebook so everyone's view matches the database. */
+async function write(fn, quiet) {
+  inFlight++; writeSeq++;
+  try { await fn(); return true; }
+  catch (e) {
+    if (!quiet && e.status !== 401) toast(e.status ? e.message : 'Couldn’t save. Check your connection and try again.', 3500);
+    return false;
+  } finally { inFlight--; writeSeq++; refresh(); }
+}
+let lastJson = '';
+async function refresh() {
+  const seq = writeSeq;
+  try {
+    const r = await fetch('/api/state', { credentials: 'same-origin', cache: 'no-store' });
+    if (r.status === 401) return showLogin();
+    if (!r.ok) throw 0;
+    const json = await r.text();
+    notice('');
+    if (seq !== writeSeq || inFlight) return;   // a save happened meanwhile; its own refresh will follow
+    showApp();
+    if (json === lastJson && notesLoaded) return;
+    lastJson = json;
+    const st = JSON.parse(json);
+    S.tutors = st.tutors; S.notes = st.notes; notesLoaded = true;
+    renderAll(false); openFromHash();
+  } catch {
+    if (!$('#loginView').hidden) return;
+    showApp(); notice('Can’t reach the notebook right now. It will catch up as soon as the connection returns.');
+  }
+}
+setInterval(() => { if (document.visibilityState === 'visible' && !$('#appView').hidden) refresh(); }, 4000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refresh(); });
+
+/* ---------- Sign in ---------- */
+
+function showLogin() { $('#appView').hidden = true; $('#loginView').hidden = false; if ($('#noteDlg').open) $('#noteDlg').close(); $('#loginCode').focus(); }
+function showApp() { if ($('#appView').hidden) { $('#loginView').hidden = true; $('#appView').hidden = false; } }
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#loginErr').textContent = '';
+  try { await api('POST', '/api/login', { code: $('#loginCode').value }); $('#loginCode').value = ''; lastJson = ''; refresh(); }
+  catch (err) { $('#loginErr').textContent = err.status ? err.message : 'Can’t reach the notebook. Check your connection.'; }
+});
+$('#logoutBtn').addEventListener('click', async () => { flush(); await api('POST', '/api/logout').catch(() => {}); lastJson = ''; showLogin(); });
+
+/* ---------- Helpers ---------- */
+
+const tutorIds = () => S.tutors.map(t => t.id);
+const nameOf = t => S.tutors.find(x => x.id === t)?.name || 'Tutor';
+function initials(t) {
+  const w = nameOf(t).trim().split(/\s+/).filter(Boolean);
+  return !w.length ? '?' : w.length === 1 ? w[0].slice(0, 2).toUpperCase() : (w[0][0] + w[w.length - 1][0]).toUpperCase();
+}
+function ago(ts) {
+  if (!ts) return '';
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 45) return 'just now';
+  const m = Math.round(s / 60); if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60); if (h < 24) return `${h} hr${h > 1 ? 's' : ''} ago`;
+  const d = Math.round(h / 24); if (d < 7) return `${d} day${d > 1 ? 's' : ''} ago`;
+  return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const fmtDate = ts => ts ? new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const fmtSize = b => b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`;
+const extOf = n => (n && n.includes('.') ? n.split('.').pop() : '').toLowerCase();
+
+function toast(msg, ms = 2400) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), ms);
+}
+function notice(msg) { const n = $('#connNotice'); n.textContent = msg || ''; n.hidden = !msg; }
+function armed(btn) {
+  if (btn.classList.contains('arm')) return true;
+  const text = btn.textContent;
+  btn.classList.add('arm'); btn.textContent = 'Click again to delete';
+  setTimeout(() => { btn.classList.remove('arm'); btn.textContent = text; }, 3000);
+  return false;
+}
+
+/* Newest (or most recently moved to top) first; editing a note doesn't reorder the list. */
+const notesFor = t => S.notes.filter(n => n.tutor === t).sort((a, b) => b.c - a.c || (a.id < b.id ? -1 : 1));
+const openNote = () => S.notes.find(n => n.id === openId);
+
+/* ---------- Tutors ---------- */
+
+function renderTutors() {
+  const ids = tutorIds();
+  if (notesLoaded && ids.length && !ids.includes(tutor)) tutor = ids[0];
+  $('#tutorTabs').innerHTML = ids.map((t, i) => `
+    <button class="tutor" data-t="${esc(t)}" aria-pressed="${t === tutor}">
+      <span class="avatar av-${i % 5}">${esc(initials(t))}</span>${esc(nameOf(t))}<span class="n">${notesFor(t).length}</span>
+    </button>`).join('');
+}
+$('#tutorTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-t]'); if (!b || b.dataset.t === tutor) return;
+  flush();
+  tutor = b.dataset.t;
+  try { localStorage.setItem('sn-tutor', tutor); } catch {}
+  $('#renameForm').hidden = true;
+  renderAll(true);
+});
+/* The name form does both jobs: rename the current tutor, or add a new one. */
+let addingTutor = false;
+function openNameForm(adding) {
+  const f = $('#renameForm');
+  if (!f.hidden && addingTutor === adding) { f.hidden = true; return; }
+  addingTutor = adding; f.hidden = false;
+  $('#renameInput').value = adding ? '' : nameOf(tutor);
+  $('#renameInput').placeholder = adding ? 'New tutor’s name' : '';
+  $('#renameSubmit').textContent = adding ? 'Add tutor' : 'Save name';
+  $('#renameInput').focus(); $('#renameInput').select();
+}
+$('#addTutorBtn').addEventListener('click', () => openNameForm(true));
+$('#renameBtn').addEventListener('click', () => openNameForm(false));
+$('#renameCancel').addEventListener('click', () => { $('#renameForm').hidden = true; });
+$('#renameForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const v = $('#renameInput').value.trim(); if (!v) return;
+  const adding = addingTutor;
+  let added;
+  const ok = await write(async () => {
+    if (adding) added = await api('POST', '/api/tutors', { name: v });
+    else await api('PATCH', '/api/tutors/' + encodeURIComponent(tutor), { name: v });
+  });
+  if (!ok) return;
+  $('#renameForm').hidden = true;
+  if (adding) { tutor = added.id; try { localStorage.setItem('sn-tutor', tutor); } catch {} toast(`${v} added`); }
+  else toast('Name saved');
+});
+
+/* ---------- Notes list ---------- */
+
+function renderList() {
+  const list = notesFor(tutor);
+  $('#noteList').innerHTML = list.length ? list.map((n, i) => {
+    const extras = [n.files.length && `${n.files.length} file${n.files.length > 1 ? 's' : ''}`, n.links.length && `${n.links.length} link${n.links.length > 1 ? 's' : ''}`].filter(Boolean).join(' · ');
+    return `<li><button data-id="${esc(n.id)}">
+      <span class="d">${esc(fmtDate(n.created))}</span>
+      <span><span class="t">${esc(n.title || 'Untitled note')}</span>
+      <span class="m">Edited ${ago(n.at)}${extras ? ' · ' + extras : ''}</span></span>
+      <span class="open">Open</span>
+    </button>
+    <span class="order">
+      <button data-move="up" data-note="${esc(n.id)}" ${i === 0 ? 'disabled' : ''} title="Move up" aria-label="Move ${esc(n.title || 'note')} up">↑</button>
+      <button data-move="down" data-note="${esc(n.id)}" ${i === list.length - 1 ? 'disabled' : ''} title="Move down" aria-label="Move ${esc(n.title || 'note')} down">↓</button>
+    </span></li>`;
+  }).join('') : `<li class="empty">${notesLoaded ? `No notes for ${esc(nameOf(tutor))} yet. Click <strong>New note</strong> to add one.` : 'Loading notes…'}</li>`;
+}
+
+function openEditor(id, focusTitle) {
+  openId = id;
+  renderEditor(true);
+  if (!$('#noteDlg').open) $('#noteDlg').showModal();
+  if (focusTitle) $('#noteTitle').focus();
+}
+$('#noteList').addEventListener('click', e => {
+  const mv = e.target.closest('[data-move]');
+  if (mv) return moveNote(mv.dataset.note, mv.dataset.move);
+  const b = e.target.closest('[data-id]'); if (b) openEditor(b.dataset.id, false);
+});
+let moving = false;
+async function moveNote(id, dir) {
+  if (moving) return;
+  moving = true;
+  await write(() => api('POST', `/api/notes/${encodeURIComponent(id)}/move`, { dir }));
+  moving = false;
+  $(`#noteList [data-move="${dir}"][data-note="${CSS.escape(id)}"]`)?.focus();
+}
+$('#closeBtn').addEventListener('click', () => $('#noteDlg').close());
+$('#noteDlg').addEventListener('close', () => {
+  if ($('#linkUrl').value.trim() && openNote()) $('#linkForm').requestSubmit(); // keep a link typed but not added
+  flush(); openId = null; $('#linkUrl').value = ''; $('#linkLabel').value = ''; renderList();
+});
+let creating = false;
+$('#newNoteBtn').addEventListener('click', async () => {
+  if (creating) return;
+  creating = true; $('#newNoteBtn').disabled = true;
+  let made;
+  try {
+    if (await write(async () => { made = await api('POST', '/api/notes', { tutor }); })) {
+      await refresh();
+      if (S.notes.some(n => n.id === made.id)) openEditor(made.id, true);
+    }
+  } finally { creating = false; $('#newNoteBtn').disabled = false; }
+});
+
+/* Each note's own link: this site's address plus #number. */
+const noteUrl = n => n.num ? `${location.origin}/#${n.num}` : '';
+$('#copyLinkBtn').addEventListener('click', () => {
+  const input = $('#noteLink');
+  navigator.clipboard.writeText(input.value).then(() => toast('Link copied'), () => { input.focus(); input.select(); toast('Press Ctrl+C to copy the link'); });
+});
+let pendingHash = (location.hash || '').replace('#', '');
+function openFromHash() {
+  if (!pendingHash || !notesLoaded) return;
+  const n = S.notes.find(x => String(x.num) === pendingHash);
+  pendingHash = '';
+  if (!n) return toast('That note number wasn’t found.');
+  tutor = n.tutor; renderAll(true); openEditor(n.id, false);
+}
+window.addEventListener('hashchange', () => { pendingHash = (location.hash || '').replace('#', ''); openFromHash(); });
+
+/* ---------- Editor ---------- */
+
+let uploads = [];
+function renderEditor(fillText) {
+  const n = openNote();
+  if (!n) return;
+  $('#noteDate').textContent = `${nameOf(n.tutor)} · ${fmtDate(n.created)}`;
+  $('#noteLinkRow').hidden = !n.num;
+  $('#noteLink').value = noteUrl(n);
+  if (fillText) { $('#noteTitle').value = n.title || ''; $('#noteText').value = n.text || ''; $('#saveState').textContent = ''; }
+  $('#newHint').hidden = !!(n.title || n.text);
+  $('#moveTopBtn').disabled = notesFor(n.tutor)[0]?.id === n.id;
+  $('#noteMeta').textContent = `Last edited ${ago(n.at)}`;
+
+  $('#linkList').innerHTML = n.links.map(l => {
+    const url = safeUrl(l.url), yt = /(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(hostOf(url));
+    return `<li>
+      <span class="ftype ${yt ? 'yt' : 'link'}">${yt ? 'VIDEO' : 'LINK'}</span>
+      <div class="body"><div class="name">${esc(l.label || hostOf(url) || url)}</div><div class="sub">${esc(url)}</div></div>
+      <div class="acts">
+        ${url ? `<a class="btn ghost sm" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${yt ? 'Watch' : 'Open'}</a>` : ''}
+        <button class="btn ghost sm danger" data-link="${esc(l.id)}">Remove</button>
+      </div>
+    </li>`;
+  }).join('');
+
+  $('#fileList').innerHTML = n.files.map(f => {
+    const ext = extOf(f.name);
+    const [cls, label] = ext === 'pdf' ? ['pdf', 'PDF'] : ext === 'pptx' ? ['ppt', 'PPT'] : ext === 'docx' ? ['doc', 'DOC']
+      : ['xlsx', 'csv'].includes(ext) ? ['xls', 'XLS'] : ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) ? ['img', 'IMG'] : ['other', (ext || 'FILE').toUpperCase().slice(0, 4)];
+    const src = '/api/files/' + encodeURIComponent(f.id);
+    const view = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) ? `<a class="btn ghost sm" href="${src}?view=1" target="_blank" rel="noopener">View</a>` : '';
+    return `<li>
+      <span class="ftype ${cls}">${esc(label)}</span>
+      <div class="body"><div class="name">${esc(f.name)}</div><div class="sub">${esc(fmtSize(f.size || 0))}</div></div>
+      <div class="acts">${view}<a class="btn ghost sm" href="${src}" download>Download</a><button class="btn ghost sm danger" data-rm="${esc(f.id)}">Remove</button></div>
+    </li>`;
+  }).join('') + uploads.filter(u => u.noteId === n.id).map(u => `<li><span class="ftype">…</span><div class="body"><div class="name">${esc(u.name)}</div><div class="sub">Uploading…</div></div></li>`).join('');
+}
+
+/* Text autosaves after a short pause; one save at a time. */
+function scheduleSave() {
+  dirty = true;
+  $('#saveState').textContent = 'Saving…'; $('#saveState').className = 'save-state';
+  clearTimeout(saveTimer); saveTimer = setTimeout(flush, 800);
+}
+function flush() {
+  if (!dirty || !openId) return;
+  clearTimeout(saveTimer); dirty = false;
+  const id = openId, data = { title: $('#noteTitle').value.trim(), text: $('#noteText').value };
+  writing = writing.then(() => write(() => api('PATCH', '/api/notes/' + encodeURIComponent(id), data))).then(ok => {
+    if (ok && id === openId && !dirty) { $('#saveState').textContent = 'Saved'; $('#saveState').className = 'save-state ok'; }
+  });
+}
+$('#noteTitle').addEventListener('input', scheduleSave);
+$('#noteText').addEventListener('input', scheduleSave);
+$('#noteTitle').addEventListener('blur', flush);
+$('#noteText').addEventListener('blur', flush);
+/* Closing the tab: send any unsaved text in the background. */
+window.addEventListener('pagehide', () => {
+  if (!dirty || !openId) return;
+  dirty = false;
+  fetch('/api/notes/' + encodeURIComponent(openId), { method: 'PATCH', keepalive: true, credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: $('#noteTitle').value.trim(), text: $('#noteText').value }) });
+});
+$('#saveBtn').addEventListener('click', () => {
+  if ($('#linkUrl').value.trim()) $('#linkForm').requestSubmit(); // a link typed but not yet added
+  if (!dirty) { $('#saveState').textContent = 'Saved'; $('#saveState').className = 'save-state ok'; return; }
+  flush();
+});
+$('#moveTopBtn').addEventListener('click', async () => {
+  const n = openNote(); if (!n) return;
+  flush();
+  if (await write(() => api('POST', `/api/notes/${encodeURIComponent(n.id)}/move`, { dir: 'top' }))) toast('Moved to top');
+});
+$('#deleteNoteBtn').addEventListener('click', async e => {
+  const n = openNote(); if (!n || !armed(e.currentTarget)) return;
+  dirty = false; clearTimeout(saveTimer);
+  if (await write(() => api('DELETE', '/api/notes/' + encodeURIComponent(n.id)))) {
+    openId = null; $('#noteDlg').close(); toast('Note deleted');
+  }
+});
+
+/* ---------- Links ---------- */
+
+$('#linkForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const n = openNote(); if (!n) return;
+  const url = safeUrl($('#linkUrl').value.trim());
+  if (!url) return toast('Enter a link starting with http:// or https://');
+  const label = $('#linkLabel').value.trim();
+  $('#linkUrl').value = ''; $('#linkLabel').value = '';
+  if (await write(() => api('POST', `/api/notes/${encodeURIComponent(n.id)}/links`, { url, label }))) toast('Link added');
+});
+$('#linkList').addEventListener('click', e => {
+  const b = e.target.closest('[data-link]'); if (!b || !armed(b)) return;
+  write(() => api('DELETE', '/api/links/' + encodeURIComponent(b.dataset.link)));
+});
+
+/* ---------- Files ---------- */
+
+const MAX_BYTES = 15 * 1024 * 1024;
+const ALLOWED = ['pdf', 'docx', 'pptx', 'xlsx', 'csv', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'webp'];
+async function addFile(file, noteId) {
+  const ext = extOf(file.name);
+  if (!ALLOWED.includes(ext)) {
+    const hint = { doc: '.docx', ppt: '.pptx', xls: '.xlsx' }[ext];
+    return toast(hint ? `Save "${file.name}" as ${hint} first, then add it.` : `"${file.name}" isn't a supported file type.`, 4000);
+  }
+  if (file.size > MAX_BYTES) return toast(`"${file.name}" is over 15 MB.`, 3500);
+  if (!file.size) return toast(`"${file.name}" is empty.`);
+  const u = { name: file.name, noteId }; uploads.push(u); renderEditor(false);
+  try {
+    if (await write(() => api('POST', `/api/notes/${encodeURIComponent(noteId)}/files?name=${encodeURIComponent(file.name)}`, undefined, file))) toast(`Added ${file.name}`);
+  } finally { uploads = uploads.filter(x => x !== u); renderEditor(false); }
+}
+$('#fileInput').addEventListener('change', async e => {
+  const id = openId, files = [...e.target.files]; e.target.value = '';
+  for (const f of files) await addFile(f, id);
+});
+$('#fileList').addEventListener('click', e => {
+  const rm = e.target.closest('[data-rm]'); if (!rm || !armed(rm)) return;
+  write(() => api('DELETE', '/api/files/' + encodeURIComponent(rm.dataset.rm)));
+});
+
+/* ---------- Render & start ---------- */
+
+function renderAll(fillText) {
+  /* The open note was deleted by someone else: close the box. */
+  if (openId && notesLoaded && !openNote() && $('#noteDlg').open) { dirty = false; $('#noteDlg').close(); }
+  renderTutors(); renderList();
+  /* Don't overwrite text being typed; refresh it when someone else changed it and this view is idle. */
+  const typing = dirty || [$('#noteTitle'), $('#noteText')].includes(document.activeElement);
+  renderEditor(fillText || !typing);
+}
+setInterval(() => { if (!$('#appView').hidden) renderList(); }, 60000);
+refresh();
+</script>
+</body>
+</html>

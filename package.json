@@ -1,0 +1,17 @@
+{
+  "name": "study-notebook",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Study Notebook: one notepad per tutor, stored in a Neon (PostgreSQL) database.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "setup-db": "node scripts/setup-db.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  }
+}
