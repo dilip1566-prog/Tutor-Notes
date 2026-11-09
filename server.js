@@ -1,7 +1,8 @@
 /* Study Notebook server.
    Serves the page in public/ and a small JSON API backed by Neon (PostgreSQL).
    The database password stays here on the server; the browser never sees it.
-   Everyone signs in with one shared access code (APP_PASSWORD). */
+   By default anyone with the link can open the notebook. Set REQUIRE_LOGIN=true
+   (plus APP_PASSWORD and SESSION_SECRET) to ask for a shared access code instead. */
 
 const path = require('path');
 const crypto = require('crypto');
@@ -12,10 +13,16 @@ try { process.loadEnvFile(path.join(__dirname, '.env')); } catch { /* hosts set 
 
 const { DATABASE_URL, APP_PASSWORD, SESSION_SECRET } = process.env;
 const PORT = Number(process.env.PORT) || 3000;
-if (!DATABASE_URL || !APP_PASSWORD || !SESSION_SECRET) {
-  console.error('Missing settings. Copy .env.example to .env and fill in DATABASE_URL, APP_PASSWORD and SESSION_SECRET.');
+const LOGIN = /^(1|true|yes|on)$/i.test(process.env.REQUIRE_LOGIN || '');
+if (!DATABASE_URL) {
+  console.error('Missing DATABASE_URL. Copy .env.example to .env and fill it in.');
   process.exit(1);
 }
+if (LOGIN && (!APP_PASSWORD || !SESSION_SECRET)) {
+  console.error('REQUIRE_LOGIN is on, so APP_PASSWORD and SESSION_SECRET must be set too.');
+  process.exit(1);
+}
+console.log(LOGIN ? 'Sign-in is ON: an access code is needed.' : 'Sign-in is OFF: anyone with the link can open the notebook.');
 
 /* ---------- Database ---------- */
 
@@ -78,9 +85,11 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');   // keep the notebook out of Google and other search engines
   next();
 });
 app.get('/healthz', (req, res) => res.type('text').send('ok'));   // the host checks this to know the app is up
+app.get('/robots.txt', (req, res) => res.type('text').send('User-agent: *\nDisallow: /\n'));
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
 app.use('/api', express.json({ limit: '1mb' }));
 
@@ -95,6 +104,7 @@ const text = (v, max, field) => {
 const uid = () => Date.now().toString(36) + crypto.randomBytes(4).toString('hex');
 
 app.post('/api/login', (req, res) => {
+  if (!LOGIN) return res.json({ ok: true });
   if (tooMany(req.ip)) return res.status(429).json({ error: 'Too many tries. Wait 10 minutes and try again.' });
   if (!sameText(req.body?.code ?? '', APP_PASSWORD)) { failed(req.ip); return res.status(401).json({ error: 'That access code isn’t right.' }); }
   attempts.delete(req.ip);
@@ -106,8 +116,8 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-/* Everything below needs a signed-in browser. */
-app.use('/api', (req, res, next) => signedIn(req) ? next() : res.status(401).json({ error: 'Please sign in.' }));
+/* Everything below needs a signed-in browser (only when sign-in is on). */
+app.use('/api', (req, res, next) => !LOGIN || signedIn(req) ? next() : res.status(401).json({ error: 'Please sign in.' }));
 
 /* The whole notebook in one go: it's small, and the page polls it for other people's changes. */
 app.get('/api/state', async (req, res) => {
@@ -124,6 +134,7 @@ app.get('/api/state', async (req, res) => {
   files.rows.forEach(f => bucket(f.note_id).files.push({ id: f.id, name: f.name, type: f.mime_type, size: f.size_bytes }));
   res.setHeader('Cache-Control', 'no-store');
   res.json({
+    login: LOGIN,
     student: student.rows[0]?.name || '',
     tutors: tutors.rows,
     notes: notes.rows.map(n => ({

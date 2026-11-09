@@ -1,6 +1,7 @@
 # Render setup for Study Notebook (Render: New > Blueprint > pick this repository).
-# Secrets are NOT stored here: Render asks for DATABASE_URL and APP_PASSWORD when you create it,
-# and makes SESSION_SECRET up by itself.
+# Secrets are NOT stored here: Render asks for DATABASE_URL on its own screen.
+# Anyone with the link can open the notebook. To ask for an access code instead,
+# add REQUIRE_LOGIN=true and APP_PASSWORD in Render's Environment settings.
 services:
   - type: web
     name: study-notebook
@@ -15,7 +16,5 @@ services:
         value: "24"
       - key: DATABASE_URL
         sync: false         # paste the Neon connection string on Render's screen
-      - key: APP_PASSWORD
-        sync: false         # the access code you and your tutors will type
       - key: SESSION_SECRET
-        generateValue: true
+        generateValue: true # only used if you turn sign-in on

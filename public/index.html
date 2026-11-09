@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Study Notebook</title>
+<meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -177,7 +178,7 @@ header .spacer { flex: 1; }
     <h1>Study Notebook</h1>
     <span class="muted">One notepad for each tutor</span>
     <span class="spacer"></span>
-    <button class="btn ghost sm" id="logoutBtn" type="button">Sign out</button>
+    <button class="btn ghost sm" id="logoutBtn" type="button" hidden>Sign out</button>
   </header>
   <div class="notice" id="connNotice" hidden></div>
 
@@ -303,6 +304,7 @@ async function refresh() {
     lastJson = json;
     const st = JSON.parse(json);
     S.tutors = st.tutors; S.notes = st.notes; notesLoaded = true;
+    $('#logoutBtn').hidden = !st.login;
     renderAll(false); openFromHash();
   } catch {
     if (!$('#loginView').hidden) return;
