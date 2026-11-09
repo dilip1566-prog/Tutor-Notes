@@ -2,6 +2,8 @@
 
 One notepad per tutor (text, links and files), stored in a Neon PostgreSQL database.
 
+**Live site:** https://tutor-notes.onrender.com (sign in with the access code)
+
 - `server.js`: the web server. It keeps the database password and checks the access code.
 - `public/index.html`: the notebook page.
 - `db/schema.sql`: the database tables.
